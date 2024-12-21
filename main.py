@@ -1,4 +1,4 @@
-import datetime
+import datetime as dt
 import os.path
 
 from google.auth.transport.requests import Request
@@ -8,7 +8,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 # If modifying these scopes, delete the file token.json.
-SCOPES = ["https://www.googleapis.com/auth/calendar"]
+SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
 
 
 
