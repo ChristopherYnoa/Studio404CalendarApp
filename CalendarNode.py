@@ -9,7 +9,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 # Constants
-SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
+SCOPES = ['https://www.googleapis.com/auth/calendar']
 
 def get_service():
     """Authenticate and return a Google Calendar API service instance."""
@@ -61,15 +61,22 @@ def get_calendar_data(start_date, end_date=None):
     # Get calendar service
     service = get_service()
 
+
+    #Try-except for halding api errors
+    try:
     # Retrieve events
-    events_result = service.events().list(
-        calendarId='primary',
-        timeMin=time_min,
-        timeMax=time_max,
-        singleEvents=True,
-        orderBy='startTime'
-    ).execute()
-    
+        events_result = service.events().list(
+            calendarId='primary',
+            timeMin=time_min,
+            timeMax=time_max,
+            singleEvents=True,
+            orderBy='startTime'
+        ).execute()
+
+    except HttpError as error:
+        print(f"An error occurred: {error}")
+        return []
+
     events = events_result.get('items', [])
     
     # Return formatted events
@@ -77,10 +84,26 @@ def get_calendar_data(start_date, end_date=None):
         print('No events found.')
         return []
     
-    for event in events:
-        start = event['start'].get('dateTime', event['start'].get('date'))
-        print(f"{start}: {event['summary']}")
-    return events
+
+    #return a list of dictionaries for each event to make formatting easier
+    formatted_events = [
+        {
+            'start': event['start'].get('dateTime', event['start'].get('date')),
+            'summary': event['summary'],
+            'description': event.get('description', None)
+        }
+        for event in events
+    ]
+
+
+    return formatted_events
+
+
+
+    # for event in events:
+    #     start = event['start'].get('dateTime', event['start'].get('date'))
+    #     print(f"{start} : {event['summary']} : {event.get('description', 'NDesc')}")
+    # return events
 
 def main():
   
