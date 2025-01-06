@@ -60,15 +60,24 @@ SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
 TOKEN_FILE = 'sheet_token.json'
 CREDENTIALS_FILE = 'credentials.json'
 
+
 def get_sheets_service():
     """Authenticate and return a Google Sheets API service instance."""
     creds = None
 
-    # Check if token exists
+    # Check if token exists and is valid
     if os.path.exists(TOKEN_FILE):
-        creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
-    
-    # If token is missing or invalid, prompt the user for authorization
+        if os.stat(TOKEN_FILE).st_size > 0:  # Ensure the token file is non-empty
+            try:
+                creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
+            except Exception as e:
+                print(f"Error loading {TOKEN_FILE}: {e}")
+                os.remove(TOKEN_FILE)  # Delete the invalid file
+        else:
+            print(f"{TOKEN_FILE} is empty. Deleting and re-authenticating.")
+            os.remove(TOKEN_FILE)
+
+    # If credentials are not available or invalid, authenticate
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
@@ -79,8 +88,9 @@ def get_sheets_service():
         # Save the credentials for the next run
         with open(TOKEN_FILE, 'w') as token:
             token.write(creds.to_json())
-    
+
     return build('sheets', 'v4', credentials=creds)
+
 
 def create_sheet_if_not_exists(service, spreadsheet_id, title):
     """Create a sheet with the given title if it does not already exist."""
@@ -134,6 +144,9 @@ def main():
     start_date = input("Enter start date (YYYY-MM-DD): ")
     end_date = input("Enter end date (YYYY-MM-DD) [leave blank for full month]: ")
 
+    print(start_date)
+    print(end_date)
+
     # Example spreadsheet ID and time frame
     spreadsheet_id = "19GpFb5B8SaVqjgqkBGrytiCzwU6D1PIiqnRrw_Qrmcg"
     # time_frame = input("Enter the time frame for the new sheet (e.g., '2024-12'): ")
@@ -151,10 +164,12 @@ def main():
     # Get Sheets service
     service = get_sheets_service()
 
+
+    print(formatted_data)
     # Create the sheet if it doesn't exist
-    if create_sheet_if_not_exists(service, spreadsheet_id, end_date if end_date.strip() else None):
+    if create_sheet_if_not_exists(service, spreadsheet_id, end_date if end_date.strip() else start_date):
         # Write data to the sheet
-        write_data_to_sheet(service, spreadsheet_id, end_date if end_date.strip() else None, formatted_data)
+        write_data_to_sheet(service, spreadsheet_id, end_date if end_date.strip() else start_date, formatted_data)
 
 if __name__ == '__main__':
     main()

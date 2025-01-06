@@ -37,34 +37,32 @@ def get_service():
     service = build('calendar', 'v3', credentials=creds)
     return service
 
+def parse_date(date_string):
+    """Parses a date string into a datetime object."""
+    return datetime.strptime(date_string, '%Y-%m-%d')
 
-def get_calendar_data(start_date, end_date=None):
+def calculate_end_date(start_date, end_date=None):
     """
-    Retrieves calendar events within the specified date range.
-    If end_date is None, fetches all events for the month of start_date.
+    Determines the end date for the date range.
+    If end_date is None, sets it to the last day of the start_date's month.
     """
-    # Parse start_date
-    start_date = datetime.strptime(start_date, '%Y-%m-%d')
-    
-    # Determine end_date if not provided
     if not end_date:
         _, last_day = calendar.monthrange(start_date.year, start_date.month)
-        end_date = datetime(start_date.year, start_date.month, last_day, 23, 59, 59)
+        return datetime(start_date.year, start_date.month, last_day, 23, 59, 59)
     else:
-        end_date = datetime.strptime(end_date, '%Y-%m-%d')
-        end_date = datetime(end_date.year, end_date.month, end_date.day, 23, 59, 59)
+        parsed_end_date = parse_date(end_date)
+        return datetime(parsed_end_date.year, parsed_end_date.month, parsed_end_date.day, 23, 59, 59)
 
-    # Format dates as ISO 8601 strings
-    time_min = start_date.isoformat() + 'Z'
-    time_max = end_date.isoformat() + 'Z'
+def format_dates_for_api(start_date, end_date):
+    """Formats the start and end dates as ISO 8601 strings for the API."""
+    return start_date.isoformat() + 'Z', end_date.isoformat() + 'Z'
 
-    # Get calendar service
-    service = get_service()
-
-
-    #Try-except for halding api errors
+def fetch_events_from_service(service, time_min, time_max):
+    """
+    Fetches events from the calendar service for the specified time range.
+    Handles API errors gracefully.
+    """
     try:
-    # Retrieve events
         events_result = service.events().list(
             calendarId='primary',
             timeMin=time_min,
@@ -72,21 +70,18 @@ def get_calendar_data(start_date, end_date=None):
             singleEvents=True,
             orderBy='startTime'
         ).execute()
-
+        return events_result.get('items', [])
     except HttpError as error:
         print(f"An error occurred: {error}")
         return []
 
-    events = events_result.get('items', [])
-    
-    # Return formatted events
+def format_events(events):
+    """Formats the raw event data into a simplified structure."""
     if not events:
         print('No events found.')
         return []
     
-
-    #return a list of dictionaries for each event to make formatting easier
-    formatted_events = [
+    return [
         {
             'start': event['start'].get('dateTime', event['start'].get('date')),
             'summary': event['summary'],
@@ -95,15 +90,28 @@ def get_calendar_data(start_date, end_date=None):
         for event in events
     ]
 
+def get_calendar_data(start_date, end_date=None):
+    """
+    Retrieves calendar events within the specified date range.
+    If end_date is None, fetches all events for the month of start_date.
+    """
+    # Parse and calculate dates
+    start_date = parse_date(start_date)
+    end_date = calculate_end_date(start_date, end_date)
 
-    return formatted_events
+    # Format dates for API
+    time_min, time_max = format_dates_for_api(start_date, end_date)
 
+    # Get calendar service
+    service = get_service()
 
+    # Fetch events
+    events = fetch_events_from_service(service, time_min, time_max)
 
-    # for event in events:
-    #     start = event['start'].get('dateTime', event['start'].get('date'))
-    #     print(f"{start} : {event['summary']} : {event.get('description', 'NDesc')}")
-    # return events
+    # Format and return events
+    print("Fetched events:", format_events(events))
+
+    return format_events(events)
 
 def main():
   
@@ -117,3 +125,71 @@ def main():
 # Main execution
 if __name__ == '__main__':
     main()
+
+
+# def get_calendar_data(start_date, end_date=None):
+#     """
+#     Retrieves calendar events within the specified date range.
+#     If end_date is None, fetches all events for the month of start_date.
+#     """
+#     # Parse start_date
+#     start_date = datetime.strptime(start_date, '%Y-%m-%d')
+    
+#     # Determine end_date if not provided
+#     if not end_date:
+#         _, last_day = calendar.monthrange(start_date.year, start_date.month)
+#         end_date = datetime(start_date.year, start_date.month, last_day, 23, 59, 59)
+#     else:
+#         end_date = datetime.strptime(end_date, '%Y-%m-%d')
+#         end_date = datetime(end_date.year, end_date.month, end_date.day, 23, 59, 59)
+
+#     # Format dates as ISO 8601 strings
+#     time_min = start_date.isoformat() + 'Z'
+#     time_max = end_date.isoformat() + 'Z'
+
+#     # Get calendar service
+#     service = get_service()
+
+
+#     #Try-except for halding api errors
+#     try:
+#     # Retrieve events
+#         events_result = service.events().list(
+#             calendarId='primary',
+#             timeMin=time_min,
+#             timeMax=time_max,
+#             singleEvents=True,
+#             orderBy='startTime'
+#         ).execute()
+
+#     except HttpError as error:
+#         print(f"An error occurred: {error}")
+#         return []
+
+#     events = events_result.get('items', [])
+    
+#     # Return formatted events
+#     if not events:
+#         print('No events found.')
+#         return []
+    
+
+#     #return a list of dictionaries for each event to make formatting easier
+#     formatted_events = [
+#         {
+#             'start': event['start'].get('dateTime', event['start'].get('date')),
+#             'summary': event['summary'],
+#             'description': event.get('description', None)
+#         }
+#         for event in events
+#     ]
+
+
+#     return formatted_events
+
+
+
+    # for event in events:
+    #     start = event['start'].get('dateTime', event['start'].get('date'))
+    #     print(f"{start} : {event['summary']} : {event.get('description', 'NDesc')}")
+    # return events
