@@ -81,14 +81,24 @@ def format_events(events):
         print('No events found.')
         return []
     
-    return [
-        {
-            'start': event['start'].get('dateTime', event['start'].get('date')),
-            'summary': event['summary'],
+    formatted_events = []
+    
+    for event in events:
+        # Extract start and end times
+        start = event['start'].get('dateTime', event['start'].get('date'))
+        end = event['end'].get('dateTime', event['end'].get('date'))  # Added handling for end time
+        
+        formatted_event = {
+            'start': start,
+            'end': end,  # Include end time in the formatted event
+            'summary': event.get('summary'),
             'description': event.get('description', None)
         }
-        for event in events
-    ]
+        
+        formatted_events.append(formatted_event)
+    
+    return formatted_events
+
 
 def get_calendar_data(start_date, end_date=None):
     """

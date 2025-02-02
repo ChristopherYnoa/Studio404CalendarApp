@@ -15,70 +15,109 @@ class FormatterNode:
             "Referral", "Referral Payment"
         ]
 
+    
+
     def format_data(self, raw_data):
-        """
-        Formats raw calendar data into the expected list of lists structure.
-        
-        Args:
-            raw_data (list): List of dictionaries representing raw calendar events.
-        
-        Returns:
-            list: A list of lists formatted as per the template.
-        """
         formatted_data = [self.template]  # Start with headers
         
         for event in raw_data:
-            # Extract fields from the raw event data
-            start = event.get("start")  # Event start datetime
-            summary = event.get("summary")  # Event summary (e.g., "Session w/ Joe")
-            description = event.get("description")  # Event description (optional)
+            print(f"DEBUG: Event Data: {event}")
 
-            # Format extracted values
-            date, start_time, end_time, hours = self.extract_time_info(start)
+            # Extract fields from event data
+            start = event.get("start")
+            end = event.get("end")
+            summary = event.get("summary")
+            description = event.get("description")
+
+            # Debugging: Print raw event data to check the start and end values
+            if not start:
+                start = "2025-01-01T00:00:00"  # Example default
+            if not end:
+                end = start  # Default to start time, or adjust as needed
+
+            # Extract formatted time data
+            date, start_time, end_time, hours = self.extract_time_info(start, end)
+
+            # Debugging: Print extracted time values
+            print(f"DEBUG: Date: {date}, Start Time: {start_time}, End Time: {end_time}, Hours: {hours}")
+
+            # Other formatting logic (Artist Name, Session Type, etc.)
             artist_name = self.format_artist(summary)
             session_type = self.determine_session_type(description)
-            paid, price, engineer_name, engineer_payment, referral, referral_payment = self.process_payment_info(description)
-
-            # Placeholder for studio (adjust as needed)
+            
+            # Extract engineer info
+            engineer_indicator, engineer_name, engineer_payment = self.format_engineer(description)
+            
+            # If no engineer name was found, set to empty
+            if engineer_name == "":
+                engineer_name = "No Engineer"
+            
+            # Process payment-related information
+            
+            # Placeholder for studio (set to empty string for now)
             studio = ""
+            paid = ""
+            price = ""
+            engineer_payment = ""
+            referral = ""
+            referral_payment = ""
 
-            # Append formatted row to the output
+            # Append formatted row to output
             formatted_data.append([
-                date, studio, artist_name, session_type, 
-                start_time, end_time, hours, paid, 
-                price, engineer_name, engineer_payment, 
+                date, studio, artist_name, session_type,
+                start_time, end_time, hours, paid,
+                price, engineer_name, engineer_payment,
                 referral, referral_payment
             ])
 
         return formatted_data
 
-    def extract_time_info(self, start):
+
+
+
+    def extract_time_info(self, start, end=""):
         """
-        Extracts date, start time, and calculates end time and session duration.
-        
+        Extracts date, start time, end time, and calculates session duration.
+
         Args:
-            start (str): The event's start time (ISO 8601 datetime string).
-        
+            start (str): ISO 8601 datetime string for event start.
+            end (str, optional): ISO 8601 datetime string for event end.
+
         Returns:
             tuple: (date, start_time, end_time, hours)
         """
         if not start:
             return "", "", "", ""
-        
+
         try:
-            # Convert ISO datetime string to datetime object
-            dt_obj = datetime.fromisoformat(start)
-            date = dt_obj.strftime("%Y-%m-%d")
-            start_time = dt_obj.strftime("%H:%M")  # Extract HH:MM format
+            # Convert ISO datetime string to datetime object for start
+            start_dt = datetime.fromisoformat(start)
+            date = start_dt.strftime("%Y-%m-%d")
+            start_time = start_dt.strftime("%H:%M")  # Format HH:MM
 
-            # Placeholder: Assuming 1-hour sessions if no explicit end time
-            end_time = (dt_obj.replace(minute=dt_obj.minute + 60)).strftime("%H:%M")
-            hours = "1"  # Default to 1 hour
+            # If no end time provided, assume it's 1 hour after the start time
+            if not end:
+                end_dt = start_dt + timedelta(hours=1)  # Default to 1 hour after start
+            else:
+                # Otherwise, use the provided end time
+                end_dt = datetime.fromisoformat(end)
+            
+            # Calculate end time and duration
+            end_time = end_dt.strftime("%H:%M")  # Format HH:MM
+            duration = (end_dt - start_dt).total_seconds() / 3600  # Calculate duration in hours
 
-            return date, start_time, end_time, hours
+            # Ensure that duration is non-negative
+            if duration < 0:
+                duration = 0
+
+            # Return formatted data
+            return date, start_time, end_time, str(round(duration, 2))  # Round duration to 2 decimal places
         except Exception as e:
             print(f"Error processing time: {e}")
             return "", "", "", ""
+
+
+
 
     def format_artist(self, summary):
         """
@@ -117,10 +156,52 @@ class FormatterNode:
         if not description:
             return "No Engineer"
         
-        if any(word in description.lower() for word in ["engineer", "mix", "record"]):
+        if any(word in description.lower() for word in ["john", "jaylun", "aaron", "chris"]):
             return "Engineer"
         
         return "No Engineer"
+
+    def format_engineer(self, description):
+        """
+        Formats the description by extracting potential engineer for sessions
+        
+        Args:
+            description (str): the event description, which may contain engineer name and pricing
+
+        Returns:
+            tuple:
+                - engineer (str): "Y" if an engineer is present, otherwise "".
+                - engineer_name (str): The name of the engineer if present, otherwise "".
+                - price (str): the price of the session if present, otherwise "".
+        """
+
+        if not description:
+            return "","","" #empty fields for an empty description
+
+        #match1 first format: "<Name> <Price>"
+        match1 = re.match(r'^([A-Za-z]+)\s+(\d+)$', description)
+        if match1:
+            engineer_name = match1.group(1)
+            price = match1.group(2)
+            return "Y", engineer_name, price
+
+        #match2 second format: "<Price> <Name>"
+        match2 = re.match(r'^(\d+)\s+([A-Za-z]+)$', description)
+        if match2:
+            price = match2.group(1)
+            engineer_name = match2.group(2)
+            return "Y", engineer_name, price
+
+        #match3 third format: "<Name>"
+        match3 = re.match(r'^([A-Za-z]+)$', description)
+        if match3:
+            engineer_name = match3.group(1)
+            return "Y", engineer_name, ""
+
+        return "", "", ""
+
+
+
 
     def process_payment_info(self, description):
         """
@@ -161,157 +242,3 @@ class FormatterNode:
 
         return paid, price, engineer_name, engineer_payment, referral, referral_payment
 
-
-
-
-
-# import re
-
-# class FormatterNode:
-#     """
-#     FormatterNode processes raw calendar data into the expected format for SheetNode.
-#     Unknown fields are filled with None or blank spaces.
-#     """
-    
-#     def __init__(self):
-#         self.template = ["Date", "Studio", "Artist Name", "Engineer?", "Engineer Name", "Referral", "Hours", "Price", "Paid?"]
-
-#     def format_data(self, raw_data):
-#         """
-#         Formats raw calendar data into the expected list of lists structure.
-        
-#         Args:
-#             raw_data (list): List of dictionaries representing raw calendar events.
-        
-#         Returns:
-#             list: A list of lists formatted as per the template.
-#         """
-#         formatted_data = [self.template]  # Start with headers
-        
-#         for event in raw_data:
-#             # Extract fields from the raw event data
-#             start = event.get("start")  # Event start datetime
-#             summary = event.get("summary")  # Event summary (e.g., "Session w/ Joe")
-#             description = event.get("description")  # Event description (optional)
-
-#             # Format the artist's name using regex to extract the name after "Session w/"
-#             artist_name = self.format_artist_name(summary)
-            
-#             # Format the date (this will handle the datetime case and provide just the date)
-#             date = self.extract_date(start)
-
-#             #Format the engineer-related fields
-#             engineer, engineer_name, price = self.format_engineer(description)
-            
-#             # Add empty values for other fields (e.g., "Studio", "Engineer?") if they're not available
-#             studio = "B"  # Example; adjust as needed
-#             #engineer = ""  # Example; adjust as needed
-#             #engineer_name = ""  # Example; adjust as needed
-#             referral = ""
-#             hours = ""  # Example; adjust as needed
-#             #price = ""  # Example; adjust as needed
-#             paid = ""  # Example; adjust as needed
-
-#             # Append the formatted row to the formatted_data
-#             formatted_data.append([
-#                 date or "", 
-#                 studio, 
-#                 artist_name, 
-#                 engineer, 
-#                 engineer_name, 
-#                 referral, 
-#                 hours, 
-#                 price, 
-#                 paid
-#             ])
-
-#         return formatted_data
-
-#     def extract_date(self, start):
-#         """
-#         Extracts the date from the event's start field.
-        
-#         Args:
-#             start (str): The event's start time (datetime string).
-        
-#         Returns:
-#             str: The event date in 'YYYY-MM-DD' format.
-#         """
-#         if isinstance(start, str):
-#             # If 'start' is a string, assume it's an ISO 8601 datetime string
-#             try:
-#                 # Extract just the date part from the datetime string (e.g., '2024-12-15')
-#                 return start.split('T')[0]
-#             except Exception as e:
-#                 print(f"Error parsing start date: {e}")
-#                 return ""
-#         return ""  # Default return in case of unexpected data format
-
-#     def format_artist_name(self, summary):
-#         """
-#         Extracts the artist's name from the event summary.
-        
-#         If the summary starts with 'session w/', it returns the name after 'session w/'.
-#         If the summary starts with 'rehearsal w/' it returns the name after 'rehearsal w/'.
-#         If the summary contains a colon ':', it returns the part before the colon.
-#         Otherwise, it returns the entire summary.
-        
-#         Args:
-#             summary (str): The event summary.
-
-#         Returns:
-#             str: The formatted artist name.
-#         """
-#         if not summary:
-#             return ""
-        
-#         # Check if summary starts with 'session w/' (case-insensitive)
-#         session_match = re.match(r"session w/\s*(.+)", summary, re.IGNORECASE)
-#         if session_match:
-#             return session_match.group(1).strip()
-
-#         #check if summary starts with 'rehearsal w/' (case-insensitive)
-#         session_match = re.match(r"rehearsal w/\s*(.+)", summary, re.IGNORECASE)
-#         if session_match:
-#             return session_match.group(1).strip()
-        
-#         # Check if summary contains a colon ':'
-#         if ':' in summary:
-#             return summary.split(':', 1)[0].strip()
-        
-#         # If none of the above, return the entire summary
-#         return summary.strip()
-
-
-#     def format_engineer(self, description):
-#         """
-#         Formats the description by extracting potential engineer for sessions
-        
-#         Args:
-#             description (str): the event description, which may contain engineer name and pricing
-
-#         Returns:
-#             tuple:
-#                 - engineer (str): "Y" if an engineer is present, otherwise "".
-#                 - engineer_name (str): The name of the engineer if present, otherwise "".
-#                 - price (str): the price of the session if present, otherwise "".
-#         """
-
-#         if not description:
-#             return "","","" #empty fields for an empty description
-
-#         #match1 first format: "<Name> <Price>"
-#         match1 = re.match(r'^([A-Za-z]+)\s+(\d+)$', description)
-#         if match1:
-#             engineer_name = match1.group(1)
-#             price = match1.group(2)
-#             return "Y", engineer_name, price
-
-#         #match2 second format: "<Price> <Name>"
-#         match2 = re.match(r'^(\d+)\s+([A-Za-z]+)$', description)
-#         if match2:
-#             price = match2.group(1)
-#             engineer_name = match2.group(2)
-#             return "Y", engineer_name, price
-
-#         return "", "", ""
