@@ -1,50 +1,3 @@
-# import gspread
-# from google.oauth2.service_account import Credentials
-
-# scopes = ["https://www.googleapis.com/auth/spreadsheets"]
-# creds = Credentials.from_service_account_file("credentials-sheets.json", scopes=scopes)
-# client = gspread.authorize(creds)
-
-# #unique identification for the sheet connected to the API
-# sheet_id = "19GpFb5B8SaVqjgqkBGrytiCzwU6D1PIiqnRrw_Qrmcg"
-# workbook = client.open_by_key(sheet_id)
-
-# values_list = workbook.sheet1.row_values(1)
-
-# print(values_list)
-
-# example = [
-#     ["Date", "Studio", "Artist Name", "Engineer?", "Engineer Name", "Referral", "Hours", "Price", "Paid?"],
-#     ["2024-12-21", "Studio B", "John Doe", "Y", "John", "John", "3", "150", "Y"]
-# ]
-
-# values = [
-#     ["Name", "Price", "Quantity"],
-#     ["Basketball", 29.99, 1],
-#     ["Jeans", 39.99, 4],
-#     ["Soap", 7.99, 3],
-# ]
-
-# worksheet_list = map(lambda x: x.title, workbook.worksheets())
-# new_worksheet_name = "Values"
-
-# if new_worksheet_name in worksheet_list:
-#     sheet = workbook.worksheet(new_worksheet_name)
-# else:
-#     sheet = workbook.add_worksheet(new_worksheet_name, rows=10, cols=10)
-
-# sheet.clear()
-
-# sheet.update(f"A1:C{len(values)}", values)
-
-# sheet.update_cell(len(values) + 1, 2, "=sum(B2:B4)")
-# sheet.update_cell(len(values) + 1, 3, "=sum(C2:C4)")
-
-# sheet.format("A1:C1", {"textFormat": {"bold": True}})
-
-
-
-
 import os
 import json
 from googleapiclient.discovery import build
@@ -92,15 +45,15 @@ def get_sheets_service():
     return build('sheets', 'v4', credentials=creds)
 
 
-def create_sheet_if_not_exists(service, spreadsheet_id, title):
+def create_sheet_if_not_exists(service, spreadsheet_id, start_date, end_date = None):
     """Create a sheet with the given title if it does not already exist."""
     try:
         # Get existing sheet names
         response = service.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
         existing_sheets = [sheet['properties']['title'] for sheet in response['sheets']]
         
-        if title in existing_sheets:
-            print(f"Sheet '{title}' already exists.")
+        if start_date in existing_sheets:
+            print(f"Sheet '{start_date}' already exists.")
             return True
 
         # Add new sheet
@@ -109,14 +62,14 @@ def create_sheet_if_not_exists(service, spreadsheet_id, title):
                 {
                     "addSheet": {
                         "properties": {
-                            "title": title
+                            "title": start_date + end_date if not None else ""
                         }
                     }
                 }
             ]
         }
         service.spreadsheets().batchUpdate(spreadsheetId=spreadsheet_id, body=body).execute()
-        print(f"Sheet '{title}' created successfully.")
+        print(f"Sheet '{start_date}' created successfully.")
         return True
     except HttpError as error:
         print(f"An error occurred: {error}")
@@ -167,9 +120,12 @@ def main():
 
     print(formatted_data)
     # Create the sheet if it doesn't exist
-    if create_sheet_if_not_exists(service, spreadsheet_id, end_date if end_date.strip() else start_date):
+    if create_sheet_if_not_exists(service, spreadsheet_id, start_date, end_date if end_date.strip() else ""):
         # Write data to the sheet
-        write_data_to_sheet(service, spreadsheet_id, end_date if end_date.strip() else start_date, formatted_data)
+        write_data_to_sheet(service, spreadsheet_id, start_date + end_date if not None else "", formatted_data)
+
+        #spreadsheet_id, start_date + " | " + end_date if not None else "" 
+       # """end_date if end_date.strip() else start_date"""
 
 if __name__ == '__main__':
     main()
