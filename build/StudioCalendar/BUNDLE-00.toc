@@ -1,0 +1,3 @@
+([('StudioCalendar',
+   '/Users/stressless/Documents/GitHub/Studio404CalendarApp/dist/StudioCalendar',
+   'EXECUTABLE')],)

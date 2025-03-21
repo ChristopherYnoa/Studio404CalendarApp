@@ -1,0 +1,3 @@
+([('run_data_dumper',
+   '/Users/stressless/Documents/GitHub/Studio404CalendarApp/dist/run_data_dumper',
+   'EXECUTABLE')],)
