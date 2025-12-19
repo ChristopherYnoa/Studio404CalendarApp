@@ -1,5 +1,25 @@
 import os
 import json
+import sys
+
+
+from pathlib import Path
+project_root = Path(__file__).resolve().parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
+
+from config.settings import (
+    SHEET_SCOPES,
+    SHEETS_TOKEN_FILE,
+    CREDENTIALS_FILE,
+    PRIMARY_CALENDAR_ID,
+    SECOND_CALENDAR_ID
+)
+
+
+
+
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from google.oauth2.credentials import Credentials
@@ -7,10 +27,13 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from datetime import datetime
 
+
+
+
 # Constants
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
-TOKEN_FILE = 'sheet_token.json'
-CREDENTIALS_FILE = 'credentials.json'
+# SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
+# TOKEN_FILE = 'sheet_token.json'
+#CREDENTIALS_FILE = 'credentials.json'
 
 def get_sheets_service():
     """
@@ -19,8 +42,8 @@ def get_sheets_service():
     creds = None
     
     # Check if token.json exists
-    if os.path.exists(TOKEN_FILE):
-        creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
+    if os.path.exists(SHEETS_TOKEN_FILE):
+        creds = Credentials.from_authorized_user_file(SHEETS_TOKEN_FILE, SHEET_SCOPES) #TOKEN_FILE
     
     # If token.json is missing or invalid, prompt the user for authorization
     if not creds or not creds.valid:
@@ -28,12 +51,12 @@ def get_sheets_service():
             creds.refresh(Request())
         else:
             flow = InstalledAppFlow.from_client_secrets_file(
-                CREDENTIALS_FILE, SCOPES
+                CREDENTIALS_FILE, SHEET_SCOPES
             )
             creds = flow.run_local_server(port=0)
         
         # Save the credentials for the next run
-        with open(TOKEN_FILE, 'w') as token:
+        with open(SHEETS_TOKEN_FILE, 'w') as token:
             token.write(creds.to_json())
    
     # Build the Google Sheets API service
@@ -153,7 +176,7 @@ def main():
     print(f"Fetching data from: {start_date} to {end_date if end_date else 'end of month'}")
     
     # Example spreadsheet ID
-    spreadsheet_id = "19GpFb5B8SaVqjgqkBGrytiCzwU6D1PIiqnRrw_Qrmcg"
+    spreadsheet_id = SPREADSHEET_ID
     
     # Get raw data
     raw_data = get_calendar_data(start_date, end_date)
@@ -175,4 +198,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

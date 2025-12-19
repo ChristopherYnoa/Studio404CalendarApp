@@ -1,9 +1,9 @@
 import tkinter as tk
 from tkinter import messagebox
 from datetime import datetime
-from FormatterNode import FormatterNode
-from CalendarNode import get_calendar_data
-from SheetNode import write_data_to_sheet, get_sheets_service, create_sheet_if_not_exists
+from src.FormatterNode import FormatterNode
+from src.CalendarNode import get_calendar_data
+from src.SheetNode import write_data_to_sheet, get_sheets_service, create_sheet_if_not_exists
 
 def process_pipeline(start_date, end_date):
     """

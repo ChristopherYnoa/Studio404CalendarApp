@@ -10,9 +10,11 @@ echo "Executing Python script..."
 python3 -m venv venv
 
 
+
 echo "Entering venv..."
 source venv/bin/activate
 echo "installing required libraries..."
+
 
 pip install -r requirements.txt
 

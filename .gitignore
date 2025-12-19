@@ -1,4 +1,6 @@
+credentials/
 credentials.json
 credentials-sheets.json
 dumpster.txt
 .coverage
+.env
